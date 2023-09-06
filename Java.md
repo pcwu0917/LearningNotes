@@ -27,14 +27,13 @@ Github: https://github.com/AobingJava/JavaFamily
 **概念**
 
 1. 底层使用的是双向链表实现，插入删除效率高，复杂度为O(1)
-2. 默认是头插法，如果需要指定下标插入、查找或者指定下标插入复杂度为O（n）
+2. 默认是尾插法，如果需要指定下标插入、查找或者指定下标插入复杂度为O（n）
 3. 该类型适合频繁插入删除头尾节点的情况。
 
 **源码**
 
 - 实现了List和Deque接口，除了具备List功能外，还支持双端队列功能。
 - 默认构造器什么都不做，内部成员变量保存头尾指针
-- remove()移除头结点，add()是头插，add(object)实现了队列接口方法为尾插
 
 #### ArrayList和LinkedList的区别
 
@@ -70,7 +69,7 @@ Github: https://github.com/AobingJava/JavaFamily
 6. 如果是链表，则遍历链表判断是否存在key，如果存在则替换；如果不存在则插入，插入后检查是否需要转化为红黑树。
 7. 插入成功后判断是否超过了阈值（数组长度*0.75*）如果超过需要扩容 ，扩大为当前容量的2倍
 
-![image-20230605193134804](img\HashMap_put流程.png)
+![image-20230605193134804](img/HashMap_put流程.png)
 
 ##### 扩容机制
 
@@ -82,7 +81,7 @@ Github: https://github.com/AobingJava/JavaFamily
 - 如果有多个元素，先判断下是否为红黑树，如果是的话就添加到红黑树中；
 - 如果是链表，遍历链表，将元素的hash值与oldCap做&操作来判断是放在原来的位置还是新扩展对应的位置newTab[j+oldCap]（ 我理解的这里是为了分散同一个hashcode值下挂载的元素数）
 
-![image-20230605215553763](img\HashMap扩容机制.png)
+![image-20230605215553763](img/HashMap扩容机制.png)
 
 ##### 寻址算法
 
@@ -129,10 +128,10 @@ Github: https://github.com/AobingJava/JavaFamily
 - 创建完线程后状态是新建(NEW)
 - 调用start()方法后变为就绪状态(Runnable)
 - 获取到CPU后变成执行状态和就绪态公用同一个状态（Runnable）
-- 如果执行完时间片还没结束则返回就绪状态，如果需要拿锁则进入阻塞态（Blocked)，如果调object.wait(xxx)或者Thread.sleep(xxx)进入限期等待状态，如果调用object.wait()或者thread.join()则进入无限期等待状态。
+- 如果执行完时间片还没结束则返回就绪状态，如果需要拿锁则进入**阻塞态**（Blocked)，如果调object.wait(xxx)或者Thread.sleep(xxx)进入限期等待状态，如果调用object.wait()或者thread.join()则进入无限期等待状态。
 - 运行结束将变为终止状态
 
-![image-20230606224733363](img\线程状态.png)
+![image-20230606224733363](img/线程状态.png)
 
 #### 如何顺序执行三个线程
 
@@ -161,7 +160,43 @@ Github: https://github.com/AobingJava/JavaFamily
 
 1. 是一个互斥的对象锁，在同一时刻只有一个线程持有对象锁。
 2. 作用在成员方法上，锁的是对象实例this；作用在静态方法上，锁的是类；作用在某个对象上，锁的是该对象。
-3. 底层实现是由monitor实现，有三个属性：<font color="red">owner（只有一个），entryList（阻塞的线程），waitSet（等待的线程）</font>
+3. 底层实现是由**monitor**实现，有三个属性：<font color="red">owner（只有一个），entryList（阻塞的线程），waitSet（等待的线程）</font>
+4. 底层实现是标记在JVM对象头中的重量级锁（ptr_to_heavyweight_monitor指向monitor对象（对象内置锁））来实现
+
+Monitor是在JVM层对Java并发控制synchronized的重量级锁的实现。通过对象内置锁（**ObjectMonitor**）来实现并发的锁控制。同时也是Java基础对象Object的wait,nofity方法的底层支持实现。
+
+![请添加图片描述](img/多线程-synchronize底层实现.png)
+
+![img](img/多线程-对象内置锁.png)
+
+1. monitorenter：代表 监视器入口，获取锁；
+2. monitorexit：代表监视器出口，释放锁；
+
+附：对象锁源码，c++
+
+```c++
+ObjectMonitor() {
+    _header = NULL;
+    _count = 0;
+    _waiters = 0,
+    _recursions = 0;
+    _object = NULL;
+    _owner = NULL;
+    _WaitSet = NULL;
+    _WaitSetLock = 0 ;
+    _Responsible = NULL ;
+    _succ = NULL ;
+    //多线程竞争锁进入时的单向链表
+    _cxq = NULL ;
+    FreeNext = NULL ;
+    //_owner从该双向循环链表中唤醒线程结点，_EntryList是第一个节点
+    _EntryList = NULL ;
+    _SpinFreq = 0 ;
+    _SpinClock = 0 ;
+    OwnerIsThread = 0 ;
+    _previous_owner_tid = 0;
+}
+```
 
 #### 锁升级
 
@@ -205,6 +240,8 @@ synchronized有三种形式：
 - AQS内部有一个state属性来判断当前是否有线程获取到资源，默认是0
 - 如果多个线程来争抢state资源，使用CAS来保证原子性。
 - 该实现类有公平锁和非公平锁两种，非公平锁指的是新加入的线程会和队列中的线程来争抢资源。公平锁则将新加入的线程放入队列尾部。
+
+![image-20230819224753679](img/多线程-ReentranLock底层代码实现.png)
 
 #### ReentrantLock
 
@@ -267,16 +304,16 @@ synchronized有三种形式：
 
 在Executors中提供了四种快捷创建线程池的静态方法
 
-1. FixThreadPool：核心线程数和最大线程数相同的线程池，没有临时线程，阻塞队列是Interger的Max_value
-2. SingleThreadPool：只有固定的一个线程的线程池，没有临时线程，阻塞队列仍然是Interger的Max_Value.
-3. CachededThreadPool：没有使用核心线程，都是临时线程，可以无限创建线程，阻塞队列SynchronousQueue不存储任何元素。
+1. FixThreadPool：核心线程数和最大线程数相同的线程池，**没有临时线程**，阻塞队列是Interger的Max_value.
+2. SingleThreadPool：只有固定的**一个线程**的线程池，没有临时线程，阻塞队列仍然是Interger的Max_Value.
+3. CachededThreadPool：没有使用核心线程，都是临时线程，可以**无限创建线程**，阻塞队列SynchronousQueue不存储任何元素。
 4. ScheduledThreadPool：可以设置核心线程数，最大线程数为Max_Value，可以延迟执行任务。
 
 #### 为什么不建议使用Executors创建线程池
 
 根据阿里巴巴代码手册，不能使用Executors创建线程池只要有以下两个问题
 
-![image-20230610002512338](D:\LearningNote\笔记\img\线程池.png)
+![image-20230610002512338](D:\LearningNote\笔记\img/线程池.png)
 
 ### 使用场景
 
@@ -287,7 +324,7 @@ CountDownLatch主要有两个方法：
 - cd.countDown()，cd数量减1
 - cd.await()，调用的线程被阻塞，当cd减少到0时，会唤醒当前线程，继续执行。
 
-在新建一个CountDownLatch对象时，需要指定减少的数量。当减少到0时，唤醒所有的await线程。
+在新建一个CountDownLatch对象时，需要指定减少的数量。**当减少到0时**，唤醒所有的await线程。
 
 ```java
 public static void main(String[] args) throws InterruptedException {
@@ -310,7 +347,7 @@ public static void main(String[] args) throws InterruptedException {
 Semaphore[ˈseməfɔːr]（谐音：四毛佛）信号量，可以用来控制当前执行线程数。
 
 - 初始化时需要指定信号量的值
-- 调用s.acquire()时请求一个信号量，如果当前信号量大于0，信号量-1，如果小于等于0时，将会被阻塞。
+- 调用s.acquire()时请求一个信号量，如果当前信号量大于0，信号量-1，如果**小于等于0时**，将会被阻塞。
 - 调用s.release()时释放一个信号量，信号量+1
 
 #### ThreadLocal
@@ -319,7 +356,7 @@ ThreadLocal又叫做线程本地存储，目的是为了实现不同线程之间
 
 底层使用的是threadLocalMap， 然而对于每一个线程内部都包含了一个ThreadLocalMap变量，当用户设置值时，会将threadLocal作为key，用户数据作为value放入线程中ThradLocalMap中。该类有三个主要的方法： set(), get(). remove()分别对应赋值，取值和移除。
 
-ThreadLocal有可能会产生内存泄漏问题，因为ThreadLocalMap的key是弱引用，但是value是弱引用，key有可能会被GC线程清除但是value不会，因此在不使用的时候及时清除。
+ThreadLocal有可能会产生内存泄漏问题，因为ThreadLocalMap的key是弱引用，但是value是强引用，key有可能会被GC线程清除但是value不会，因此在不使用的时候及时清除。
 
 #### 场景1：大量数据导入
 
@@ -361,7 +398,7 @@ void insert(){}
 
 ## 类加载子系统
 
-![image-20230813221635586](img\JVM-类加载子系统整体图.png)
+![image-20230813221635586](img/JVM-类加载子系统整体图.png)
 
 ### 作用
 
@@ -371,7 +408,7 @@ void insert(){}
 
 ### 加载过程
 
-![image-20230813222059948](img\JVM-类加载过程.png)
+![image-20230813222059948](img/JVM-类加载过程.png)
 
 #### 加载阶段
 
@@ -426,7 +463,7 @@ JVM支持两种类型的类加载器 。分别为引导类加载器（Bootstrap 
 
 从概念上来讲，自定义类加载器一般指的是程序中由开发人员自定义的一类类加载器，但是Java虚拟机规范却没有这么定义，而是将所有派生于抽象类ClassLoader的类加载器都划分为自定义类加载器。
 
-![image-20230813223809523](img\JVM-类加载器分类.png)
+![image-20230813223809523](img/JVM-类加载器分类.png)
 
 #### 启动类加载器
 
@@ -476,7 +513,7 @@ Java虚拟机对class文件采用的是**按需加载**的方式，也就是说�
 - 如果父类加载器还存在其父类加载器，则进一步向上委托，依次递归，请求最终将到达顶层的启动类加载器；
 - 如果父类加载器可以完成类加载任务，就成功返回，倘若父类加载器无法完成此加载任务，子加载器才会尝试自己去加载，这就是双亲委派模式。
 
-![image-20230813225308031](img\JVM-双亲委派机制.png)
+![image-20230813225308031](img/JVM-双亲委派机制.png)
 
 #### 作用
 
@@ -505,7 +542,7 @@ Java虚拟机对class文件采用的是**按需加载**的方式，也就是说�
 | 方法区       | 是（OOM）     | 是         |
 | 堆           | 是            | 是         |
 
-![image-20230813225805218](img\JVM-运行时数据区.png)
+![image-20230813225805218](img/JVM-运行时数据区.png)
 
 ## 程序计数器
 
@@ -544,7 +581,7 @@ Java虚拟机对class文件采用的是**按需加载**的方式，也就是说�
 - 方法返回地址（Return Address）（或方法正常退出或者异常退出的定义）
 - 一些附加信息
 
-![image-20230813232042947](img\JVM-栈帧.png)
+![image-20230813232042947](img/JVM-栈帧.png)
 
 #### 局部变量表
 
@@ -571,7 +608,7 @@ Java虚拟机对class文件采用的是**按需加载**的方式，也就是说�
 
 在Java源文件被编译到字节码文件中时，所有的变量和方法引用都作为符号引用保存在class文件的常量池里。
 
-![image-20230813233619712](img\JVM-动态链接.png)
+![image-20230813233619712](img/JVM-动态链接.png)
 
 #### 方法返回地址
 
@@ -619,7 +656,7 @@ Java虚拟机对class文件采用的是**按需加载**的方式，也就是说�
 
 堆空间内部结构，JDK1.8之前从永久代  替换成元空间。
 
-![image-20230814221818790](img\JVM-永久代.png)
+![image-20230814221818790](img/JVM-永久代.png)
 
 #### Java对象
 
@@ -701,7 +738,7 @@ TLAB：Thread Local Allocation Buffer，中文名是**线程私有内存分配�
 
 从内存模型而不是垃圾收集的角度，对Eden区域继续进行划分，JVM为每个线程分配了一个私有缓存区域，它包含在Eden空间内。多线程同时分配内存时，使用TLAB可以避免一系列的非线程安全问题，同时还能够提升内存分配的吞吐量，因此我们可以将这种内存分配方式称之为快速分配策略。
 
-![image-20230814224902334](img\JVM-TLAB.png)
+![image-20230814224902334](img/JVM-TLAB.png)
 
 #### 设置
 
@@ -759,7 +796,7 @@ TLAB：Thread Local Allocation Buffer，中文名是**线程私有内存分配�
 
 ### 栈、堆、方法区的交互关系
 
-![image-20230814231336803](img\JVM-栈堆方法区.png)
+![image-20230814231336803](img/JVM-栈堆方法区.png)
 
 ### 概念
 
@@ -861,9 +898,9 @@ JDK8以后
 
 ### 对象内存布局
 
-![image-20230815113504401](img\JVM-对象内存布局.png)
+![image-20230815113504401](img/JVM-对象内存布局.png)
 
-![image-20230815113721540](img\JVM-对象内存图.png)
+![image-20230815113721540](img/JVM-对象内存图.png)
 
 ## 执行引擎
 
@@ -914,8 +951,6 @@ GC Roots
 - 标记一清除算法（Mark-Sweep）
 - 复制算法（copying）
 - 标记-压缩算法（Mark-Compact）
-
-
 
 |              | 标记清除           | 标记整理         | 复制算法                              |
 | ------------ | ------------------ | ---------------- | ------------------------------------- |
@@ -1083,7 +1118,7 @@ Safe Point的选择很重要，如果太少可能导致GC等待的时间太长�
 
 ### 7款经典收集器
 
-![image-20230815141346428](img\JVM-经典垃圾回收器.png)
+![image-20230815141346428](img/JVM-经典垃圾回收器.png)
 
 新生代收集器：Serial、ParNew、Paralle1 Scavenge；
 
@@ -1130,11 +1165,11 @@ CMS的垃圾收集算法采用标记-清除算法，并且也会"stop-the-world"
 
 CMS整个过程比之前的收集器要复杂，整个过程分为4个主要阶段，即初始标记阶段、并发标记阶段、重新标记阶段和并发清除阶段。(涉及STW的阶段主要是：初始标记 和 重新标记)
 
-![image-20230815142034164](img\JVM-CMS垃圾回收器.png)
+![image-20230815142034164](img/JVM-CMS垃圾回收器.png)
 
-- **初始标记**（Initial-Mark）阶段：在这个阶段中，程序中所有的工作线程都将会因为“stop-the-world”机制而出现短暂的暂停，这个阶段的主要任务仅仅只是**标记出GCRoots能直接关联到的对象**。一旦标记完成之后就会恢复之前被暂停的所有应用线程。由于直接关联对象比较小，所以这里的速度非常快。
+- **初始标记**（Initial-Mark）阶段：单线程标记。在这个阶段中，程序中所有的工作线程都将会因为“stop-the-world”机制而出现短暂的暂停，这个阶段的主要任务仅仅只是**标记出GCRoots能直接关联到的对象**。一旦标记完成之后就会恢复之前被暂停的所有应用线程。由于直接关联对象比较小，所以这里的速度非常快。
 - **并发标记**（Concurrent-Mark）阶段：从Gc Roots的直接关联对象开始遍历整个对象图的过程，这个过程耗时较长但是不需要停顿用户线程，可以与垃圾收集线程一起并发运行。
-- **重新标记**（Remark）阶段：由于在并发标记阶段中，程序的工作线程会和垃圾收集线程同时运行或者交叉运行，因此为了修正并发标记期间，因用户程序继续运作而导致标记产生变动的那一部分对象的标记记录，这个阶段的停顿时间通常会比初始标记阶段稍长一些，但也远比并发标记阶段的时间短。
+- **重新标记**（Remark）阶段：多线程标记。由于在并发标记阶段中，程序的工作线程会和垃圾收集线程同时运行或者交叉运行，因此为了修正并发标记期间，因用户程序继续运作而导致标记产生变动的那一部分对象的标记记录，这个阶段的停顿时间通常会比初始标记阶段稍长一些，但也远比并发标记阶段的时间短。
 - **并发清除**（Concurrent-Sweep）阶段：此阶段清理删除掉标记阶段判断的已经死亡的对象，释放内存空间。由于不需要移动存活对象，所以这个阶段也是可以与用户线程同时并发的
 
 ### 小结
@@ -1200,7 +1235,7 @@ G1GC的垃圾回收过程主要包括如下三个环节：
 
 ### 总结
 
-![image-20230815145943065](img\JVM-垃圾回收器总结.png)
+![image-20230815145943065](img/JVM-垃圾回收器总结.png)
 
 # Spring Farmowork
 
@@ -1237,7 +1272,7 @@ Spring的顶层接口，也是Spring的核心容器，表面上只是getBean，�
 
 ##### ApplicationContext
 
-![image-20230613214905621](img\ApplicationContext.png)
+![image-20230613214905621](img/ApplicationContext.png)
 
 由BeanFactory派生出来的，扩展了spring容器的功能，底层是实现下面的接口
 
@@ -1293,7 +1328,7 @@ AbstractAutowireCapableBeanFactory{
 
 解析BeanDefination -> 构造函数(new) -> 依赖注入 -> Aware接口 -> BeanPostProcessor#before  -> 初始化方法 -> BeanPostProcessor#after -> 使用 -> 销毁
 
-![image-20230612233535181](img\bean生命周期.png)
+![image-20230612233535181](img/bean生命周期.png)
 
 ##### BeanDefinition
 
@@ -1353,11 +1388,11 @@ public class A{
 
 第二种：每次都在需要注入A对象时判断是否需要对A进行代理，如果需要代理，从二级缓存中取出A对象完成代理。如果同时有很多引用A的代理对象，需要每次都调用ObjectFactory.getObject()获取方法，**但是每次获取到的A的代理对象是不同的**，导致不同的对象引用了不同的A代理对象，很明显和A对象是单例的像冲突。
 
-![image-20230613234924323](img\三级缓存-2.png)
+![image-20230613234924323](img/三级缓存-2.png)
 
-![image-20230613221807096](img\循环引用流程.png)
+![image-20230613221807096](img/循环引用流程.png)
 
-![image-20230613222436185](img\三级缓存.png)
+![image-20230613222436185](img/三级缓存.png)
 
 ### AOP
 
@@ -1461,7 +1496,7 @@ public class DispatcherServlet extends HttpServlet{
 }
 ```
 
-![image-20230614201119348](img\SpringMvc执行流程.png)
+![image-20230614201119348](img/SpringMvc执行流程.png)
 
 ### 组件
 
@@ -1502,15 +1537,15 @@ public class DispatcherServlet extends HttpServlet{
 
 ### Spring
 
-![image-20230618145803030](img\Spring常用注解.png)
+![image-20230618145803030](img/Spring常用注解.png)
 
 ### Spring MVC
 
-![image-20230618145833118](img\SpringMVC常用注解.png)
+![image-20230618145833118](img/SpringMVC常用注解.png)
 
 ### SpringBoot
 
-![image-20230618150025500](img\SpringBoot常用注解.png)
+![image-20230618150025500](img/SpringBoot常用注解.png)
 
 # Spring Cloud
 
@@ -1579,7 +1614,7 @@ SpringCloud-Gateway是基于WebFlux框架来实现的，底层使用了高性能
 3. WebHandler通过各种过滤器的preHandle后，发送到具体的服务上
 4. 服务处理完成之后的响应信息会再走一遍过滤器的postHandle方法
 
-![Spring Cloud Gateway Diagram](img\SpringCloudGateway处理流程.png)
+![Spring Cloud Gateway Diagram](img/SpringCloudGateway处理流程.png)
 
 ### 组件
 
@@ -1691,13 +1726,19 @@ public class ConsumerTest {
 
 ```
 
-
-
 # 中间件
 
 ## Redis
 
-### 概念
+### 命令手册
+
+https://redis.com.cn/commands.html
+
+网友笔记：https://github.com/Romantic-Lei/Learning-in-practice/tree/master/Redis/12.Redis%E9%AB%98%E9%98%B6%E7%AF%87
+
+### 基础篇
+
+#### 概念
 
 Redis是一种开源的数据存储系统，可以用作**数据库、缓存、消息中间件**。
 
@@ -1705,9 +1746,35 @@ Redis是一种开源的数据存储系统，可以用作**数据库、缓存、�
 - 内置功能：复制，LUA脚本，LRU驱动时间，事务和不同类型的持久化策略（RDB和AOF）
 - 高可用：通过哨兵模式和自动分区提供高可用
 
-### 持久化
+#### 数据结构
 
-#### RDB
+##### Bitmap
+
+只保存0和1的数组
+
+需求：签到、上班、标志位
+
+![image-20230828223430949](img/Redis-位图.png)
+
+##### Hyberloglog
+
+去重复的统计功能。例如统计某个网站的独立访客（一个IP）
+
+##### GEO
+
+Redis GEO 主要用于存储地理位置信息，并对存储的信息进行操作，包括
+
+添加地理位置的坐标。
+
+获取地理位置的坐标。
+
+计算两个位置之间的距离。
+
+根据用户给定的经纬度坐标来获取指定范围内的地理位置集合
+
+#### 持久化
+
+##### RDB
 
 全称：Redis Database Backup file
 
@@ -1717,14 +1784,14 @@ Redis是一种开源的数据存储系统，可以用作**数据库、缓存、�
 
 缺点是最后一次持久化操作后的数据可能丢失。
 
-##### 保存策略
+**保存策略**
 
 - save 900 1 900秒内有1个key变化就保存
 - save 300 10 300秒内有10个key变化就保存
 - save 60 10000 60秒内有10000个key变化就保存
 - save "" 禁用RDB模式
 
-##### 优点
+**优点**
 
 文件类型：持久化文件是二进制文件，同时也记录了时间戳，可以快速定位数据版本
 
@@ -1732,13 +1799,13 @@ Redis是一种开源的数据存储系统，可以用作**数据库、缓存、�
 
 数据恢复：二进制文件数据恢复和传输比较方便
 
-##### 缺点
+**缺点**
 
 数据完整性：无法保证数据的完整性，在最后一次持久化后的数据将会丢失。
 
 性能：如果Redis整体数据特别大，每次持久化会很耗时，持久化过程将占用大量系统资源，导致主线程无法及时响应
 
-#### AOF
+##### AOF
 
 全称Append Only File
 
@@ -1746,24 +1813,24 @@ AOP是以日志文件保存每一次的增删改操作。当Redis重启时，会
 
 默认不开启，需要手动设置。
 
-##### 保存策略
+**保存策略**
 
 - appendfsync always: 每当有新的修改数据命令时都会执行保存操作：效率低，但是安全
 - appendfsync everysec: 每秒保存一次，如果断电，可能会丢失一秒的数据。
 - appendfsync no: 从不保存，将数据交给操作系统来处理。
 
-##### 优点
+**优点**
 
 1. 相对于RDB更安全
 2. 以日志文件格式保存，包含的是各种redis命令，容易解读
 
-##### 缺点
+**缺点**
 
 1. 比RDB更占用磁盘空间
 2. 恢复速度慢
 3. 每次读写都要同步的话，有一定的性能压力
 
-### 事务
+#### 事务
 
 参考博客：https://blog.csdn.net/shark_chili3007/article/details/120884205
 
@@ -1771,9 +1838,9 @@ Redis中的事务只是一个单独的隔离操作，主要作用是串联多个
 
 Redis中的事务时基于乐观锁来实现的，底层实现是用CAS
 
-![image-20230624185437191](img\Redis事务.png)
+![image-20230624185437191](img/Redis事务.png)
 
-![image-20230624190746615](img\Redis事务案例.png)
+![image-20230624190746615](img/Redis事务案例.png)
 
 常用命令：**Multi**开启事务，**Exec**执行事务，**Discard**取消事务
 
@@ -1782,14 +1849,18 @@ Redis中的事务时基于乐观锁来实现的，底层实现是用CAS
 - 如果语法层面上有报错，会遗弃所有的命令。
 - 如果是运行中报错，则会执行所有的正确指令。
 
-### 消息订阅
+#### 管道
+
+
+
+#### 消息订阅
 
 Redis是基于发布订阅的方式实现消息通信，即：发送者发送消息，订阅者接受消息。
 
 - Subscribe [channel...] 订阅频道
 - Publish [channel] [message] 发布消息到指定的频道
 
-### 主从复制
+#### 主从复制
 
 当配置多态服务器时，主机和从机的身份是分开的，主机以写为主，从机以读为主。
 
@@ -1797,7 +1868,7 @@ Redis是基于发布订阅的方式实现消息通信，即：发送者发送消
 
 从机是从头开始复制主机的信息，是完全负责。另外从机不能写，只能读
 
-### 哨兵模式
+#### 哨兵模式
 
 在主从模式中，系统不具备自动修复功能，当主节点宕机时，需要手动切换服务器，安全性得不到保障。
 
@@ -1809,17 +1880,270 @@ Redis官方推荐一种高可用方案：哨兵模式。当主机发生故障时
 2. 客观下线：只适用于主机。当哨兵发现主机出现故障时，会询问其他哨兵对主机的判断，如果超过半数以上的哨兵认为主机宕机了，就会被标记为客观下线。
 3. 投票选举：所有的哨兵会通过投票机制，选举一个哨兵做故障转移操作。被选举的哨兵按照一定的规则从从服务中选举一个最优的服务器作为主服务器，并通过发布订阅方式通知其余从节点更改配置，跟随新上任的主服务器。至此完成了主从切换。
 
-### 缓存问题
+#### 集群
+
+### 高级篇
+
+#### Redis线程
+
+##### 面试题
+
+- Redis是单线程还是多线程？
+- IO多路复用讲一下？
+- Redis为什么那么快？
+
+##### 单线程
+
+Redis的版本主流的是3.x，4.x、6.x版本不同架构也不同。
+
+redis4之后才慢慢支持多线程，2020年05月直到Redis6/7版本后才稳定。
+
+![image-20230824232017301](img/Redis-版本迭代.png)
+
+1. Redis的主要操作命令都是基于主线程处理的，也就是**单线程**
+2. 其他功能，比如RDB、AOF、异步删除、集群数据同步等是**其他线程**来实现的。
+
+总结：Redis命令工作线程是单线程，但是对于整个Redis来说，是多线程的。
+
+##### 使用单线程的原因
+
+- 开发维护简单
+- 单线程也可以支持并发
+- 对于Redis，性能瓶颈是**内存**和**网络带宽**而不是CPU，这也就是为什么Redis没有充分利用多核CPU资源的原因。
+
+##### 单线程的缺陷
+
+例如del大对象时，可能会造成Redis主线程卡顿，这个时候，例如连接，赋值操作都会被阻塞。
+
+解决：
+
+- 尽量避免主线程卡顿
+- 惰性删除，让耗时操作交给新的子线程做
+
+##### 速度快的原因
+
+- 数据都存储在内存中
+- 数据结构简单
+- 多路复用和非阻塞IO
+- 单线程模型，避免上下文切换和多线程资源竞争，同时也不会导致死锁问题
+
+##### 多路复用
+
+1. 网络请求用**多线程**，因为网络仍然是瓶 颈
+2. 命令操作仍然是单线程
+3. select -> poll -> epoll
+
+![image-20230824235941235](img/Redis-多路复用.png)
+
+##### 三种网络模型
+
+![image-20230825000703495](img/Redis-三种网络模型.png)
+
+![image-20230825001219009](img/Redis-多路复用图解.png)
+
+主线程使用多路复用，缓慢的网络请求用其他的IO线程来处理。
+
+![image-20230825001711795](img/Redis-主线程和其他IO线程.png)
+
+##### 多线程
+
+多线程IO默认是关闭的，需要手动开启。如果吞吐量没有明显提升，可以尝试开启多线程机制。
+
+在配置文件中修改两个操作。
+
+```conf
+io-thread 4
+
+io-threads-do-reads yes
+```
+
+#### BigKey问题
+
+##### 面试题
+
+- More key问题，生产上有百万级别的记录，如何遍历？可以使用key *吗？
+- 如何查询固定前缀的key
+- 如何限制keys */flushDB/flushAll等危险命令
+- memory usage命令有用过吗？
+- 多大的key算bigkey？怎么发现？怎么处理？如何删除？
+- BigKey如何调优？讲下惰性释放
+
+##### 禁用命令
+
+大数据量下的缓存，例如百万级别的缓存，如果使用下面的重量级操作，有可能导致主线程阻塞很久。
+
+- keys *
+- flushDB
+- flushall
+
+因为为了防止调用指定命令，可以在redis.conf中配置禁用的命令
+
+```conf
+# 置空就代表禁用
+rename-command keys ""
+rename-command flushdb ""
+rename-command flushall ""
+```
+
+##### 解决方案
+
+scan系列的命令：https://redis.com.cn/commands/scan.html
+
+游标增量查询
+
+##### bigkey
+
+**标准**
+
+- string类型控制住10kb以内，其他类型元素格式不要超过5000
+- 不要用del删除非字符串key
+
+**如何发现**
+
+- `redis-cli --bigkeys`
+- memory usage key
+
+**解决方案**
+
+渐进性删除，例如`hdel key`  逐步删除hash里的属性，最后再删除key
+
+##### 调优
+
+```tex
+# Redis has two primitives to delete keys. One is called DEL and is a blocking
+# deletion of the object.
+# 惰性删除，将给子线程处理
+lazyfree-lazy-server-del yes
+replica-lazy-flush yes
+lazyfree-lazy-user-del yes
+```
+
+#### 双写一致性
+
+##### 面试题
+
+- 如何解决数据库和缓冲数据一致性问题
+- 双写一致性，先更新缓存还是mysql
+- 什么是延时双删？
+- 什么是双检加锁？
+- 如何保证mysql和redis的最终一致性？
+
+![image-20230826200108593](img/Redis-双写一致性.png)
+
+##### 双写一致性
+
+- 对于redis中的数据，需要和mysql数据库中的值相同
+- 如果redis中无数据，数据库中的值是最新值，需要回写到redis
+- 回写有两种策略：同步写和异步写
+
+##### 双检加锁（读）
+
+如果在缓存中没有，在mysql中有数据，则需要把数据同步到redis缓冲中。
+
+当并发量很大时，会同时创建很多线程同时访问mysql，然后多次覆盖redis中的值，这个时候就用到了双检加锁机制，类似于单例模式的双重检测锁机制。
+
+这个时候可以在访问mysql前加锁，然后查询到数据后写入到redis；第二个线程再从redis中取数据时就可以获取到了。
+
+```java
+public String get(String key){
+    String value = redis.get(key);
+    if(value != null) {
+        return value;
+    }
+    synchronized(Service.class){
+        // 双重检测
+        value = redis.get(key);
+        if(value != null){
+            return value;
+        } else {
+            // 缓存没有则查DB
+            value = dao.get(key);
+            redis.setnx(key,value,time)
+        }
+    }
+}
+```
+
+##### 最终一致性
+
+给缓存设置过期时间，定期清理缓存并回写，是保证最终一致性的解决方案
+
+所有的写操作以数据库为准，对缓存的操作只是尽最大努力即可。
+
+##### 更新策略
+
+- 先更新数据库，再更新redis：回写redis失败有可能失败导致redis中存储的是脏数据；或者多线程同时操作mysql和redis，有可能导致mysql和redis数据不一致。
+- 先更新redis，再更新数据库（不推荐）：mysql是底单数据，保证最后解释；多线程环境下，有可能导致数据不一致。
+- 先删除缓存，再更新数据库：有可能数据库还没更新写成功，又有新的线程来读取redis和数据库导致返回的是旧值，然后又将旧值（脏数据）回写到redis。解决方案可以使用下面介绍的延时双删。
+- 先更新数据，再删除redis（推荐）：也有可能出现问题：在更新数据库的同时，有线程访问redis获取到旧值。可以重新访问来解决该问题。如果删除缓存失败，可以使用消息中间件来兜底。
+
+![image-20230827203653657](img/Redis-缓存更新策略.png)
+
+##### 延时双删
+
+如果更新数据，
+
+- 先删除redis缓存key
+- 更新mysql
+- 再次删除redis中的key
+
+#### 双写一致性案例
+
+**面试题**
+
+- 如何直到mysql有数据更新？mysql的binlog日志如果有变更，则可以监听到mysql的变动。
+
+阿里巴巴有一个开源的中间件：**canal**。可以实现redis数据管理和业务代码的解耦，当操作数据库时，就不需要再管理redis。
+
+该中间件的作用是监听mysql的数据，然后同步到redis/mq等。
+
+github：https://github.com/alibaba/canal
+
+案例：https://github.com/alibaba/canal/wiki/ClientExample
+
+#### 分布式锁
+
+Redis分布式锁是一种在**多个进程或线程之间实现互斥访问共享资源**的方法。它保证了在分布式环境下，同一时刻只有一个进程或线程可以访问被保护的资源，从而实现数据的一致性和完整性。
+
+Redis分布式锁的实现方式通常使用SET命令对指定的键进行操作，其中SET命令具有原子性，即它要么成功执行，要么失败，不会出现中间状态。通过SET命令和指定的键，可以实现在多个进程或线程之间共享一个锁。
+
+以下是Redis分布式锁的基本步骤：
+
+1. 获取锁：客户端使用SET命令对指定的键进行设置，并设置一个过期时间。如果设置成功，则表示获得了锁。
+2. 等待锁：如果设置失败（即其他客户端已经获得了锁），则表示当前客户端需要等待锁释放。可以使用BLPOP或其他阻塞命令等待键的释放。
+3. 释放锁：客户端完成对共享资源的操作后，使用DEL命令删除指定的键，以释放锁。
+
+需要注意的是，Redis分布式锁的实现方式有多种，例如RedLock算法、Lua脚本等。在实际应用中，需要根据业务需求和性能等因素选择适合的锁实现方式。此外，在实现分布式锁时还需要考虑一些问题，例如锁的超时时间、重试机制等。
+
+#### 缓存问题
 
 参考博客：http://c.biancheng.net/redis/cache.html
 
-#### 缓存穿透
+##### 缓存穿透
 
 数据在缓存中没有，在数据库中也没有
 
 解决方案：缓存空对象和布隆过滤器（将所有存在的数据都哈希到一个足够到的map中，如果这个map里没有，则一定没有）
 
-#### 缓存击穿
+##### 布隆过滤器
+
+![image-20230821211219442](img/Redis-布隆过滤器.png)
+
+布隆过滤器有可能会出现一定的误判：比如数据D并不在集合中，但是因为和数据C哈希值冲突，导致误以为D存在缓冲中。
+
+但这并不影响，因为布隆过滤器的作用时剔除掉所有不存在缓存和数据库中的数据（即只针对数据F)，因此出现误判时也并不影响。
+
+如何避免误判呢？可以采用二次hash法，如果第一次hash判断有值，进行二次哈希再次确认，如果两次都有值，那么则认为存在缓存中。
+
+- 如果存在时可能存在，如果不存在时则一定不存在。
+- 可以添加元素，不能删除记录，因为共用某个坑位。
+
+有两种实现方案
+
+1. redis支持的bitmap
+2. 谷歌的Guava布隆过滤器，比较权威
+
+##### 缓存击穿
 
 数据在缓存中没有，但在数据库中存在。
 
@@ -1827,15 +2151,57 @@ Redis官方推荐一种高可用方案：哨兵模式。当主机发生故障时
 
 解决方案：改变过期时间和分布式锁。
 
-#### 缓存雪崩
+##### 缓存雪崩
 
 大量的key同时过期，导致大量请求同时访问数据库。
 
 解决方案：对key设置随机不同的过期时间
 
-#### 缓存预热
+##### 缓存预热
 
 在系统上线时，阿静热点数据加载到缓存系统中，这样当用户请求时，就可以直接查询缓存了。
+
+#### 过期策略
+
+redis采用的是定期删除+惰性删除策略
+
+**为什么不用定时删除策略?**
+
+定时删除,用一个定时器来负责监视key,过期则自动删除。虽然内存及时释放，但是十分消耗CPU资源。在大并发请求下，CPU要将时间应用
+在处理请求，而不是删除key,因此没有采用这一策略.
+
+**定期删除+惰性删除是如何工作的呢?**
+
+定期删除，redis默认每个100ms检查，是否有过期的key,有过期key则删除。
+
+需要说明的是，redis不是每个100ms将所有的key检查一次，而是随机抽取进行检查(如果每隔100ms,全部key进行检查，redis岂不是卡死)。
+
+因此，如果只采用定期删除策略，会导致很多key到时间没有删除。
+
+于是，惰性删除派上用场。也就是说在你获取某个key的时候，redis会检查一下，这个key如果设置了过期时间那么是否过期了？如果过期了此时就会删除。
+
+**采用定期删除+惰性删除就没其他问题了么?**
+
+不是的，如果定期删除没删除key。然后你也没即时去请求key，也就是说惰性删除也没生效。这样，redis的内存会越来越高。那么就应该
+采用内存淘汰机制。
+
+在redis.conf中有一行配置
+
+```properties
+maxmemory-policy volatile-lru
+```
+
+该配置就是配内存淘汰策略的
+
+- volatile-lru：从已设置过期时间的数据集（server.db[i].expires）中挑选最近最少使用的数据淘汰
+- volatile-ttl：从已设置过期时间的数据集（server.db[i].expires）中挑选将要过期的数据淘汰
+- volatile-random：从已设置过期时间的数据集（server.db[i].expires）中任意选择数据淘汰
+- allkeys-lru：从数据集（server.db[i].dict）中挑选最近最少使用的数据淘汰
+- allkeys-random：从数据集（server.db[i].dict）中任意选择数据淘汰
+- no-enviction（驱逐）：禁止驱逐数据，新写入操作会报错
+
+ps：如果没有设置 expire 的key, 不满足先决条件(prerequisites); 那么 volatile-lru, volatile-random 和volatile-ttl 策略的行为, 和
+noeviction(不删除) 基本上一致
 
 ## Nginx
 
@@ -1919,7 +2285,7 @@ http {
 
 Tomcat服务器主要包含两部分，连接器Connector和容器Container，分别使用Coyote和Catalina实现的。
 
-![img](img\Tomcat顶层架构图.png)
+![img](img/Tomcat顶层架构图.png)
 
 ### Connector(Coyote)
 
@@ -1930,7 +2296,7 @@ Tomcat服务器主要包含两部分，连接器Connector和容器Container，�
 3. 映射：通过映射表并根据请求地址，来匹配正确的容器进行处理。底层使用了适配器模式解耦。
 4. 响应：将响应返回给客户端
 
-![img](img\Tomcat-Coyote流程.png)
+![img](img/Tomcat-Coyote流程.png)
 
 支持的协议：HTTP和AJP
 
@@ -1938,7 +2304,7 @@ Tomcat服务器主要包含两部分，连接器Connector和容器Container，�
 
 Tomcat针对不同的协议和IO方式，提供了不同的实现，他们都实现了ProtocolHandler接口,这里使用了**桥接模式**，因为处理器的种类有两个变化维度，在AbstractProtocol中包含了AbstractEndpoint来定义注入不同IP方式的实现。
 
-![img](img\Tomcat-链接器原理.png)
+![img](img/Tomcat-链接器原理.png)
 
 
 
@@ -1956,7 +2322,7 @@ Catalina是Servlet容器的具体实现。具体工作：
 1. 一个serve实例包含很多service，一个service包含多个Connector链接器和Engine引擎
 2. 引擎内部也是一对多的关系：分别是Host虚拟主机，Context上下文，Wapper具体的Servlet包装类。
 
-![img](img\Tomcat容器结构.png)
+![img](img/Tomcat容器结构.png)
 
 ## Kafka
 
@@ -1988,7 +2354,7 @@ Catalina是Servlet容器的具体实现。具体工作：
 
 ### 生产者
 
-![image-20230718001229514](img\kafka-procedure-send-flow.png)
+![image-20230718001229514](img/kafka-procedure-send-flow.png)
 
 #### 分区
 
@@ -2049,7 +2415,7 @@ acks:
 
 #### zookeeper
 
-![image-20230718001058985](img\kakfa-broker-zookeeper.png)
+![image-20230718001058985](img/kakfa-broker-zookeeper.png)
 
 1. 当前所有的节点broker.ids
 2. leader
@@ -2075,16 +2441,16 @@ acks:
 
 kafka为什么运行那么快，为什么可以高效读写
 
-- kafka本身是分布式集群，可以采用分区技术，并行度高
-- 读数据采用稀疏索引，可以快速定位消费的数据
-- 顺序写磁盘
-- 页缓存和零拷贝技术
+- kafka本身是分布式集群，可以采用**分区**技术，并行度高
+- 读数据采用**稀疏索引**，可以快速定位消费的数据
+- **顺序写**磁盘
+- **页缓存**和**零拷贝**技术
 
 ### 消费者
 
-![image-20230724222956040](img\Kafka消费者初始化.png)
+![image-20230724222956040](img/Kafka消费者初始化.png)
 
-![image-20230724223057797](img\Kafka消费者流程.png)
+![image-20230724223057797](img/Kafka消费者流程.png)
 
 #### 消费方式
 
@@ -2200,7 +2566,7 @@ Gemfire的C/S结构包括以下几个主要组件：
 
 #### **多地／多数据中心WAN部署**
 
-![Gemfire架构图.drawio](img\Gemfire-CS架构图.png)
+![Gemfire架构图.drawio](img/Gemfire-CS架构图.png)
 
 WAN 交互是通过网络复制进行的。每个数据中心都有自己的 Gemfire 集群，数据中心之间通过 WAN 连接。当一个数据中心中的数据更新时，该数据中心的 Gemfire 集群会通过网络复制将这些更新发送到其他数据中心的 Gemfire 集群。
 
@@ -2260,13 +2626,13 @@ Github: https://github.com/Buildings-Lei/mysql_note/blob/main/README.md#%E9%94%8
 
 #### 可重复读
 
-![image-20230731222038848](img\Mysql-可重复读例子.png)
+![image-20230731222038848](img/Mysql-可重复读例子.png)
 
 #### 序列化
 
-![image-20230731223712303](img\Mysql-序列化隔离级别例子.png)
+![image-20230731223712303](img/Mysql-序列化隔离级别例子.png)
 
-![image-20230731224157558](img\Mysql-序列化隔离级别例子2.png)
+![image-20230731224157558](img/Mysql-序列化隔离级别例子2.png)
 
 Mysql默认是可重复读，Oracle默认为读已提交
 
@@ -2287,7 +2653,7 @@ SESSION 是会话级别，表示只针对当前会话有效，GLOBAL 表示对�
 
 ## 存储引擎
 
-![image-20230731232534490](img\Mysql-体系结构.png)
+![image-20230731232534490](img/Mysql-体系结构.png)
 
 存储引擎就是存储数据、建立索引、更新/查询数据等技术的实现方式。存储引擎是基于表而不是基于库的，所以存储引擎可以被称为表引擎。
 
@@ -2312,7 +2678,7 @@ Mysql 5.5版本之后，默认存储引擎是InnoDB，有以下特点
 
 InnoDB逻辑存储结构
 
-1. ![image-20230730234124315](img\innoDB逻辑存储结构,.png)
+1. ![image-20230730234124315](img/innoDB逻辑存储结构,.png)
 
 ### MyISAM
 
@@ -2330,7 +2696,7 @@ MyISAM 是 MySQL 早期的默认存储引擎。
 - xxx.MYD: 存储数据
 - xxx.MYI: 存储索引
 
-![image-20230731214115990](img\mysql-MyISAM.png)
+![image-20230731214115990](img/mysql-MyISAM.png)
 
 ### Memory
 
@@ -2340,7 +2706,7 @@ Memory引擎的数据存储在内存中，断电会丢失数据，只能作为�
 
 只存储sdi文件，也就是只存储表结构
 
-![image-20230731214646953](img\Memory引擎.png)
+![image-20230731214646953](img/Memory引擎.png)
 
 ### 区别
 
@@ -2350,7 +2716,7 @@ Memory引擎的数据存储在内存中，断电会丢失数据，只能作为�
 - InnoDB是行级锁，MyISAM是表级锁
 - InnoDB支持外键，MyISAM不支持
 
-![image-20230731215511465](img\Mysql的全部引擎.png)
+![image-20230731215511465](img/Mysql的全部引擎.png)
 
 | 特点         | InnoDB              | MyISAM   | Memory |
 | :----------- | :------------------ | :------- | :----- |
@@ -2370,8 +2736,6 @@ Memory引擎的数据存储在内存中，断电会丢失数据，只能作为�
 - InnoDB: 是默认的存储引擎，支持事务、外键。如果系统对事务的完整性要求比较高，在并发情况下进行增删改查操作，InnoDB是唯一的选择。
 - MyISAM: 由于不支持事务操作，适合以读和写为主，很少的删除和更新的场景。例如**评论**，**足迹**，**日志**等。
 - Memory：将所有数据保存在内存中，访问速度快，可以作为**临时表**或者**缓存**使用。
-
-
 
 ## 索引 
 
@@ -2416,13 +2780,13 @@ Memory引擎的数据存储在内存中，断电会丢失数据，只能作为�
 
 可视化页面：https://www.cs.usfca.edu/~galles/visualization/BTree.html
 
-![Mysql-B树](img\Mysql-B树.png)
+![Mysql-B树](img/Mysql-B树.png)
 
 
 
 #### B+树
 
-![image-20230802232150022](img\Mysql-B+树.png)
+![image-20230802232150022](img/Mysql-B+树.png)
 
 Mysql的索引结构对B+树做了优化，在原有 的B+树基础上增加一个指向前面页的指针，从而在页的级别上形成了**双向循环链表**。
 
@@ -2474,7 +2838,7 @@ Mysql的索引结构对B+树做了优化，在原有 的B+树基础上增加一�
 - 如果没有主键，将使用第一个唯一（UNIQUE）索引作为聚集索引
 - 如果没有主键，也没有唯一索引，InnoDB会自动生成一个rowid作为隐藏的聚集索引。
 
-![image-20230803000657475](img\Mysql-聚集索引和二级索引.png)
+![image-20230803000657475](img/Mysql-聚集索引和二级索引.png)
 
 #### B+树数据量
 
@@ -2503,7 +2867,7 @@ Mysql的索引结构对B+树做了优化，在原有 的B+树基础上增加一�
 
 例如创建(A,B,C)的联合索引，则当where条件中出现（A)(A,B)(A,B,C)三种情况时才会使用索引。
 
-![image-20230806154326467](img\Mysql-联合索引.png)
+![image-20230806154326467](img/Mysql-联合索引.png)
 
 - 当where条件中没有索引第一列时，索引失效；
 
@@ -2512,7 +2876,7 @@ Mysql的索引结构对B+树做了优化，在原有 的B+树基础上增加一�
   WHERE B=xx and C=xx;
   ```
 
-  ![image-20230806154445026](img\mysql-联合索引失效1.png)
+  ![image-20230806154445026](img/mysql-联合索引失效1.png)
 
 - 当where条件中缺少索引中的一个，则缺少后的索引失效。
 
@@ -2521,7 +2885,7 @@ Mysql的索引结构对B+树做了优化，在原有 的B+树基础上增加一�
   WHERE A=xx abd C=xx
   ```
 
-  ![image-20230806155113477](img\mysql-联合索引失效2.png)
+  ![image-20230806155113477](img/mysql-联合索引失效2.png)
 
 - where条件中的列是顺序不必和创建索引时的顺序相同，只要出现即可。
   ```sql
@@ -2529,7 +2893,7 @@ Mysql的索引结构对B+树做了优化，在原有 的B+树基础上增加一�
   WHERE C=XX AND B=XX AND A=XX`同样有效
   ```
 
-  ![image-20230806155645529](img\mysql-联合索引失效3.png)
+  ![image-20230806155645529](img/mysql-联合索引失效3.png)
 
 总之，以上三种情况均会导致联合索引失效问题。原理是因为底层B+树联合索引是使用A-B-C作为key，如果缺少
 
@@ -2538,7 +2902,7 @@ Mysql的索引结构对B+树做了优化，在原有 的B+树基础上增加一�
 1. 在索引列上进行**运算**操作，索引将失效。如：`explain select * from tb_user where substring(phone, 10, 2) = '15';`
 2. 字符串类型字段使用时，**不加引号**，索引将失效。如：`explain select * from tb_user where phone = 17799990015;`，此处phone的值没有加引号
 3. 模糊查询中，如果仅仅是尾部模糊匹配，索引不会是失效；如果是**左模糊**匹配，索引失效。如：`explain select * from tb_user where profession like '%工程';`**全模糊**也会失效。阿里巴巴规范如下：
-   ![image-20230806160412709](img\MYSQl-索引失效3-模糊匹配-阿里巴巴规范.png)
+   ![image-20230806160412709](img/MYSQl-索引失效3-模糊匹配-阿里巴巴规范.png)
 4. 用 **or 分割**开的条件，如果 or 其中一个条件的列没有索引，那么涉及的索引都不会被用到。
 5. 如果 **MySQL 评估**使用索引比全表更慢，则不使用索引。
 
@@ -2623,7 +2987,7 @@ show index 里面的sub_part字段可以看到截取的长度。
 show [global|session] status like 'Com_______';
 ```
 
-![image-20230803194810452](img\mysql-查看执行次数.png)
+![image-20230803194810452](img/mysql-查看执行次数.png)
 
 ### 慢查询日志
 
@@ -2644,7 +3008,7 @@ long_query_time=2
 
 当执行到慢查询时，会默认在$MYSQL_HOME/data/`host-name`-slow.log中追加查询。
 
-![image-20230803203119486](img\mysql-慢查询日志.png)
+![image-20230803203119486](img/mysql-慢查询日志.png)
 
 ### SQL性能分析
 
@@ -2694,26 +3058,28 @@ Explain的各个字段的含义：
      explain select * from test.class where id=1;
      ```
 
-  3. const：使用聚集索引，也就是主键索引查询时，对应的级别。
+  3. **const**：使用聚集索引，也就是主键索引查询时，对应的级别。
+     
      ```sql
      explain select * from class where id=1;
      ```
-
-  4. eq_ref：使用普通索引时的查询级别：
-
+     
+  4. **eq_ref**：使用普通索引时的查询级别：
+  
      ```sql
      create index idx_class_name on class(class_name);
      explain select * from class where class_name='test';
      ```
-
-  5. range：当查询in、between、like左匹配时，使用该级别
+  
+  5. **range**：当查询in、between、like左匹配时，使用该级别
+     
      ```sql
      explain select * from class where id in (1,2,3,4,5);
      explain select * from class where id between 1 and 10;
      ```
-  
+     
   6. index：查询全部索引，一般常见于order by，阿里巴巴规范中约定要避免该级别。
-     ![image-20230806234624256](img\mysql-优化等级index.png)
+     ![image-20230806234624256](img/mysql-优化等级index.png)
   
      ```sql
      explain select config_id from sys_config order by config_key;
@@ -2758,8 +3124,8 @@ Explain的各个字段的含义：
 
 ### Order by
 
-1. Using filesort：通过表的索引或全表扫描，读取满足条件的数据行，然后在排序缓冲区 sort buffer 中完成排序操作，所有不是通过索引直接返回排序结果的排序都叫 FileSort 排序
-2. Using index：通过有序索引顺序扫描直接返回有序数据，这种情况即为 using index，不需要额外排序，操作效率高
+1. **Using filesort**：通过表的索引或全表扫描，读取满足条件的数据行，然后在排序缓冲区 sort buffer 中完成排序操作，所有不是通过索引直接返回排序结果的排序都叫 FileSort 排序
+2. **Using index**：通过有序索引顺序扫描直接返回有序数据，这种情况即为 using index，不需要额外排序，操作效率高
 
 如果order by字段全部使用升序排序或者降序排序，则都会走索引，但是如果一个字段升序排序，另一个字段降序排序，则不会走索引，explain的extra信息显示的是`Using index, Using filesort`，如果要优化掉Using filesort，则需要另外再创建一个索引，如：
 
@@ -2839,7 +3205,7 @@ update student set no = '123' where name = 'test';
 
 ### 总结
 
-![image-20230807212638637](img\Mysql-SQL优化总结.png)
+![image-20230807212638637](img/Mysql-SQL优化总结.png)
 
 ## 锁
 
@@ -2887,11 +3253,12 @@ flush tables with read lock;
 
    3. 读锁不会阻塞其他客户端的读，但是会阻塞写。写锁既会阻塞其他客户端的读，又会阻塞其他客户端的写。
 
-2. 元数据锁（meta data lock，MDL），MDL加锁过程是系统自动控制，无需显式使用，在访问一张表的时候会自动加上。MDL锁主要作用是维护表元数据的数据一致性，在表上有活动事务的时候，不可以对元数据进行写入操作。在MySQL5.5中引入了MDL，当对一张表进行增删改查的时候，加MDL读锁（共享）;当对表结构进行变更操作的时候，加MDL写锁（排他）。  
+2. **元数据锁**（meta data lock，MDL），MDL加锁过程是系统自动控制，无需显式使用，在访问一张表的时候会自动加上。MDL锁主要作用是维护表元数据的数据一致性，在表上有活动事务的时候，不可以对元数据进行写入操作。在MySQL5.5中引入了MDL，当对一张表进行增删改查的时候，加MDL读锁（共享）;当对表结构进行变更操作的时候，加MDL写锁（排他）。  
 
-3. 意向锁: 为了避免DML在执行时，加的行锁与表锁的冲突，在InnoDB中引入了意向锁，使得表锁不用检查每行数据是否加锁，使用意向锁来减少表锁的检查。 
+3. **意向锁:** 目的是为了避免**修改表结构**和**修改数据并发**冲突。当修改表结构前先判断下是否有意向锁，如果有，等待意向锁释放。
+   为了避免DML在执行时，加的行锁与表锁的冲突。在InnoDB中引入了意向锁，使得表锁不用检查每行数据是否加锁，使用意向锁来减少表锁的检查。 
    一个客户端对某一行加上了行锁，那么系统也会对其加上一个意向锁，当别的客户端来想要对其加上表锁时，便会检查意向锁是否兼容，若是不兼容，便会阻塞直到意向锁释放。 
-
+   
    意向锁兼容性：
    1. 意向共享锁（IS）：与表锁共享锁（read）兼容，与表锁排它锁（write）互斥。  
    2. 意向排他锁（lX）：与表锁共享锁（read）及排它锁（write）都互斥。意向锁之间不会互斥。  
@@ -2902,8 +3269,10 @@ flush tables with read lock;
 InnoDB的数据是基于索引组织的，行锁是通过对索引上的索引项加锁来实现的，而不是对记录加的锁。对于行级锁，主要分为以下三类：  
 
 1. 行锁（Record Lock）：锁定单个行记录的锁，防止其他事务对此行进行update和delete。在RC（read commit ）、RR（repeat read）隔离级别下都支持。
-2. 间隙锁（GapLock）：锁定索引记录间隙（不含该记录），确保索引记录间隙不变，防止其他事务在这个间隙进行insert，产生幻读。在RR隔离级别下都支持。比如说 两个临近叶子节点为 15 23，那么间隙就是指 [15 , 23],锁的是这个间隙。
+2. 间隙锁（GapLock）：锁定索引记录间隙（不含该记录），确保索引记录间隙不变，防止其他事务在这个间隙进行insert，产生幻读。在RR隔离级别下都支持。比如说 两个临近记录的id为 15和23，那么间隙就是指 [15 , 23],锁的是这个间隙。
 3. 临键锁（Next-Key Lock）：行锁和间隙锁组合，同时锁住数据，并锁住数据前面的间隙Gap。在RR隔离级别下支持。
+
+
 
 InnoDB实现了以下两种类型的行锁：  
 
@@ -2915,7 +3284,7 @@ InnoDB实现了以下两种类型的行锁：
 默认情况下，InnoDB在REPEATABLE READ事务隔离级别运行，InnoDB使用next-key 锁进行搜索和索引扫描，以防止幻读。
 
 1. 针对唯一索引进行检索时，对已存在的记录进行等值匹配时，将会自动优化为行锁。
-2. InnoDB的行锁是针对于索引加的锁，不通过索引条件检索数据，那么InnoDB将对表中的所有记录加锁，此时就会升级为表锁。
+2. InnoDB的行锁是针对于索引加的锁，不通过索引条件检索数据，那么InnoDB将对表中的所有记录加锁，此时就会**升级为表锁**。
 
 间隙锁/临键锁-演示
 
@@ -2929,7 +3298,7 @@ InnoDB实现了以下两种类型的行锁：
 
 ### 总结
 
-![image-20230807233149983](img\Mysql-锁总结.png)
+![image-20230807233149983](img/Mysql-锁总结.png)
 
 ## InnoDB引擎
 
@@ -2949,7 +3318,7 @@ InnoDB实现了以下两种类型的行锁：
 
 包含内存架构、磁盘架构和同步线程三部分
 
-![image-20230809215636725](D:\LearningNote\笔记\img\Mysql-架构图.png)
+![image-20230809215636725](D:\LearningNote\笔记\img/Mysql-架构图.png)
 
 #### 内存架构
 
@@ -2977,20 +3346,20 @@ InnoDB实现了以下两种类型的行锁：
 3. Purge线程：回收提交完的事务的undo log。
 4. Page cleaner线程：协助Master线程刷新脏页到磁盘，减少阻塞。
 
-![image-20230809225949718](img\Mysql-IO线程,png)
+![image-20230809225949718](img/Mysql-IO线程,png)
 
 ### 事务原理
 
 事务的原子性、一致性和持久性是通过redo log和undo log来实现的，隔离性是通过锁和MVCC来实现的。
 
-- 持久性是根据redo log（提交日志）来实现的，redo log是用来在刷新内存脏页到磁盘发生错误时，进行数据恢复使用。
-- 原子性根据undo log（回滚日志）来实现的，undo log内容记录的是逻辑日志，可以理解为记录的是与操作相反的DML语句。例如，事务中执行insert那么undo log记录delete，事务中执行update，那么undo log中记录与只相反的记录。当执行rollback的时候就可以读取该内容并回滚。
-- 一致性是由undo log和redo log实现的。
-- 隔离性是由锁加MVCC实现
+- **持久性**是根据redo log（提交日志）来实现的，redo log是用来在刷新内存脏页到磁盘发生错误时，进行数据恢复使用。
+- **原子性**根据undo log（回滚日志）来实现的，undo log内容记录的是逻辑日志，可以理解为记录的是与操作相反的DML语句。例如，事务中执行insert那么undo log记录delete，事务中执行update，那么undo log中记录与只相反的记录。当执行rollback的时候就可以读取该内容并回滚。
+- **一致性**是由undo log和redo log实现的。
+- **隔离性**是由锁加MVCC实现
 
 ### MVCC
 
-全称Multi-Version Concurrency Control，多版本并发控制。指维护一个数据的多个版本，使得读写操作没有冲突，快照读为MySQL实现MVCC提供了一个非阻塞读功能。
+全称Multi-Version Concurrency Control，多版本并发控制。指维护**一个数据的多个版本**，使得读写操作没有冲突，快照读为MySQL实现MVCC提供了一个非阻塞读功能。
 
 #### 当前读
 
@@ -3011,7 +3380,15 @@ InnoDB实现了以下两种类型的行锁：
 
 MVCC的具体实现，还需要依赖于数据库记录中的**三个隐式字段**、**undo log**日志、**readView**。
 
-三个隐式字段：undo log，readView
+一条记录的三个隐藏字段：DB_TRX_ID(修改事务id)，DB_ROLL_PTR(山歌一个版本的指针)，ROW_ID(隐藏主键)
+
+
+
+如何确定返回哪一个版本？这是由read view决定返回 undo log 中的哪一个版本。
+
+具体规则：
+
+![image-20230820011051514](img/MYSQL-MVCC实现原理.png)
 
 ## Mysql管理
 
@@ -3044,7 +3421,7 @@ mysql -uroot -p123456 -e  "select * from xxx";
 
 一般在脚本中使用
 
-![image-20230810233041404](img\mysql-mysqladmin.png)
+![image-20230810233041404](img/mysql-mysqladmin.png)
 
 #### mysqlbinlog
 
@@ -3058,7 +3435,7 @@ mysql -uroot -p123456 -e  "select * from xxx";
 
 语法：mysqlshow [options] [db_name[table-name[col_name]]]
 
-![image-20230810233916050](img\MySql-mysqlshow.png)
+![image-20230810233916050](img/MySql-mysqlshow.png)
 
 #### mysqlDump
 
@@ -3776,7 +4153,7 @@ Mapper接口：代理接口，JDK动态代理
 6. Executor执行前，进行输入参数映射，执行SQL
 7. 输出结果映射
 
-![image-20230618160816700](img\Mybatis执行流程.png)
+![image-20230618160816700](img/Mybatis执行流程.png)
 
 ### 执行器
 
@@ -3819,6 +4196,33 @@ public class User{
         select * from student where id = #{id}
     </select>
 </mapper>
+```
+
+### 拦截器
+
+MYBATIS的拦截器（Interceptor）是一种强大的工具，可以对MYBATIS的内部实现进行拦截和修改。它允许你在MYBATIS执行各种操作，例如在SQL执行前、执行后、出现异常时进行操作，也可以修改返回结果等。
+
+MYBATIS的拦截器可以用来实现很多功能，例如性能监控、SQL注入、结果集篡改等。
+
+要创建和使用MYBATIS的拦截器，需要遵循以下步骤：
+
+1. 创建一个实现了`Interceptor`接口的类。
+2. 在该类上添加@Intercepts注解，指定要拦截的方法。
+3. 实现`Interceptor`接口中的方法，定义拦截行为。
+4. 在MYBATIS配置文件中添加该拦截器。
+
+例如，下面是一个简单的拦截器示例，用于修改SQL语句：
+
+```java
+public class MyInterceptor implements Interceptor {
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+        Statement statement = invocation.getArgs()[0];
+        String sql = statement.getSql();
+        sql = "SELECT * FROM " + sql.substring(sql.indexOf("FROM") + 4);
+        return invocation.proceed(new Object[]{sql});
+    }
+}
 ```
 
 ### 约定
@@ -3866,7 +4270,7 @@ public SqlSessionTemplate(SqlSessionFactory sqlSessionFactory, ExecutorType exec
 }
 ```
 
-![image-20230619235536546](img\SqlSession线程安全问题.png)
+![image-20230619235536546](img/SqlSession线程安全问题.png)
 
 ### 缓存
 
@@ -3884,11 +4288,11 @@ public class TransactionalCacheManager {
 
 
 
-![image-20230619115340312](img\Mybatis一级缓存.png)
+![image-20230619115340312](img/Mybatis一级缓存.png)
 
 二级缓存：作用域是namespace和mapper的作用于，不依赖session。当某一个作用域发生了增删改操作后，会清空二级缓存数据。
 
-![image-20230619120157911](img\Mybatis二级缓存.png)
+![image-20230619120157911](img/Mybatis二级缓存.png)
 
 # 数据结构
 
@@ -3936,7 +4340,7 @@ B-tree，B代表balance，又叫平衡多路查找树。
 - 所有的叶子结点中包含了全部关键字的信息，及指向含有这些关键字记录的指针，且叶子结点本身依关键字的大小自小而大的顺序链接。 (而B 树的叶子节点并没有包括全部需要查找的信息)；
 - 所有的非终端结点可以看成是索引部分，结点中仅含有其子树根结点中最大（或最小）关键字。 (而B 树的非终节点也包含需要查找的有效信息)；
 
-![在这里插入图片描述](img\数据结构-B+树.png)
+![在这里插入图片描述](img/数据结构-B+树.png)
 
 ### B/B+树区别
 
@@ -4032,7 +4436,7 @@ private void levelTraverse(Queue<TreeNode> queue, List<Integer> res) {
 
 ## 网络分层
 
-![在这里插入图片描述](img\计算机网络-网络分层.png)
+![在这里插入图片描述](img/计算机网络-网络分层.png)
 
 ## TCP建立和关闭连接
 
@@ -4044,7 +4448,7 @@ private void levelTraverse(Queue<TreeNode> queue, List<Integer> res) {
 
 经过了这三次握手，两者就进入了连接状态
 
-![image-20230815162816672](img\计算机网络-TCP的三次握手.png)
+![image-20230815162816672](img/计算机网络-TCP的三次握手.png)
 
 ### 四次挥手
 
@@ -4052,7 +4456,7 @@ private void levelTraverse(Queue<TreeNode> queue, List<Integer> res) {
 
 主要目的：保证TCP连接的全双工连接
 
-![image-20230815162848562](img\计算机网络-TCP的四次握手.png)
+![image-20230815162848562](img/计算机网络-TCP的四次握手.png)
 
 过程
 
@@ -4102,7 +4506,7 @@ TCP的拥塞控制是通过一系列算法来实现的，主要的拥塞控制�
 
 这些算法的主要目的是为了防止过多的数据包在网络中造成拥塞，从而导致网络性能下降。
 
-![image-20230815171635596](img\计算机网络-拥塞控制.png)
+![image-20230815171635596](img/计算机网络-拥塞控制.png)
 
 
 
@@ -4189,11 +4593,11 @@ HTTPS是以安全为目标的HTTP通道，简单将就是HTTP的安全版。即H
 
 参考博客：https://blog.csdn.net/weixin_50886514/article/details/119045154
 
-![img](img\排序算法.png)
+![img](img/排序算法.png)
 
 ### 插入排序
 
-![在这里插入图片描述](img\插入排序演示.gif)
+![在这里插入图片描述](img/插入排序演示.gif)
 
 ```java
 private static void insertSort(int[] arr, int n) {
@@ -4210,7 +4614,7 @@ private static void insertSort(int[] arr, int n) {
 
 ### 选择排序
 
-![在这里插入图片描述](img\选择排序.png)
+![在这里插入图片描述](img/选择排序.png)
 
 ```java
 private static void selectSort(int[] arr, int n) {
@@ -4232,7 +4636,7 @@ private static void selectSort(int[] arr, int n) {
 
 ### 冒泡排序
 
-![在这里插入图片描述](img\冒泡排序.png)
+![在这里插入图片描述](img/冒泡排序.png)
 
 ```java
 private static void bubbleSort(int[] arr, int n) {
@@ -4252,7 +4656,7 @@ private static void bubbleSort(int[] arr, int n) {
 
 ### 快速排序
 
-![在这里插入图片描述](img\快速排序.png)
+![在这里插入图片描述](img/快速排序.png)
 
 ```java
 private static void quickSort(int[] arr, int left, int right) {
@@ -4285,7 +4689,7 @@ private static void quickSort(int[] arr, int left, int right) {
 
 ### 希尔排序
 
-![在这里插入图片描述](img\希尔排序.png)
+![在这里插入图片描述](img/希尔排序.png)
 
 ```java
 private static void shellSort(int[] arr, int n) {
@@ -4307,7 +4711,7 @@ private static void shellSort(int[] arr, int n) {
 
 分解 - 排序 -合并
 
-![img](img\归并排序.gif)
+![img](img/归并排序.gif)
 
 ```java
 private static int[] mergeSort(int[] arr, int left, int right) {
@@ -4343,7 +4747,7 @@ private static int[] mergeSort(int[] arr, int left, int right) {
 3. 重新堆化
 4. 循环2,3步骤
 
-![在这里插入图片描述](img\堆排序.gif)
+![在这里插入图片描述](img/堆排序.gif)
 
 1. 先构建一个堆，升序排序构建大顶堆，降序构建小顶堆
    1. 当前节点的左子节点下标为：2i+1，右子节点为2i+2
@@ -4693,11 +5097,6 @@ public int minArray(int[] numbers) {
 ### 12矩阵中的数列
 
 力扣：https://leetcode.cn/problems/ju-zhen-zhong-de-lu-jing-lcof/
-
-```java
-```
-
-
 
 ## 动态规划
 
