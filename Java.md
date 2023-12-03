@@ -1070,8 +1070,6 @@ Safe Point的选择很重要，如果太少可能导致GC等待的时间太长�
   - 弱引用（WeakReference）：被弱引用关联的对象只能生存到下一次垃圾收集之前。当垃圾收集器工作时，无论内存空间是否足够，都会回收掉被弱引用关联的对象。
   - 虚引用（PhantomReference）：一个对象是否有虚引用的存在，完全不会对其生存时间构成影响，也无法通过虚引用来获得一个对象的实例。==为一个对象设置虚引用关联的唯一目的就是能在这个对象被收集器回收时收到一个系统通知。
 
-
-
 ## 垃圾回收器
 
 ### 分类
@@ -1471,7 +1469,7 @@ void test2() throw FileNotFoundException{
 2. DispatchServelt收到请求后调用处理映射器HandleMapping，
 3. HandleMapping找到具体的处理器，生成HandleExecutionChain返回给DispatchServlet，包含拦截器和处理器
 4. DispatchServlet调用HandleAdapter
-5. HandleAdapter调用具体的处理器
+5. HandleAdapter调用具体的处理器（**调用前后分别执行拦截器的前置处理和后置处理方法**）
 6. 处理完成后返回modelAndView对象给HandleAdapter
 7. HandleAdapter将结果ModelAndView返回给DispatchServelte，如果是空直接结束，不进行试图渲染。
    如果加了@responseBody注解，将会把处理后的诗句利用messageConvert转化后存入到response中
@@ -2149,7 +2147,10 @@ Redis分布式锁的实现方式通常使用SET命令对指定的键进行操作
 
 一般出现在热点数据过期场景，大量并发访问该数据将会直接访问数据库。
 
-解决方案：改变过期时间和分布式锁。
+解决方案：
+
+1. 改变过期时间或永不过期
+2. 双检加锁
 
 ##### 缓存雪崩
 
